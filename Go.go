@@ -18,9 +18,15 @@ var (
 	hWind int
 )
 
+type Img struct {
+	w   int
+	h   int
+	rgb [][]color.Color
+}
+
 //fmt.Println(xWindow, yWindow, wWindow, hWindow)
 
-func loadImg(path string) (w int, h int, rgb [][]color.Color) {
+func loadImg(path string) (img Img) {
 	infile, err := os.Open(path)
 	if err != nil {
 		panic("can't open " + path)
@@ -33,19 +39,17 @@ func loadImg(path string) (w int, h int, rgb [][]color.Color) {
 	}
 
 	bounds := src.Bounds()
-	w, h = bounds.Max.X, bounds.Max.Y
+	img.w, img.h = bounds.Max.X, bounds.Max.Y
 
-	rgb = make([][]color.Color, h)
-	for y := 0; y < h; y++ {
-		row := make([]color.Color, w)
-		for x := 0; x < w; x++ {
-			//color := src.At(x, y)
-			//r, g, b, _ := color.RGBA()
+	img.rgb = make([][]color.Color, img.h)
+	for y := 0; y < img.h; y++ {
+		row := make([]color.Color, img.w)
+		for x := 0; x < img.w; x++ {
 			row[x] = src.At(x, y)
 		}
-		rgb[y] = row
+		img.rgb[y] = row
 	}
-	return w, h, rgb
+	return img
 }
 
 func saveImg(img *image.RGBA, filePath string) {
@@ -56,7 +60,7 @@ func saveImg(img *image.RGBA, filePath string) {
 	defer file.Close()
 	png.Encode(file, img)
 }
-func getScreenshot() (int, int, [][]color.Color) {
+func getScreenshot() (screen Img) {
 	start := time.Now()
 
 	src, _ := screenshot.Capture(xCord, yCord, wWind, hWind)
@@ -65,35 +69,33 @@ func getScreenshot() (int, int, [][]color.Color) {
 	fmt.Println("time:", end.Sub(start))
 	//save(src, "all.png")
 	bounds := src.Bounds()
-	w, h := bounds.Max.X, bounds.Max.Y
+	screen.w, screen.h = bounds.Max.X, bounds.Max.Y
 	//fmt.Println(w, h)
-	rgb := make([][]color.Color, h)
-	for y := 0; y < h; y++ {
-		row := make([]color.Color, w)
-		for x := 0; x < w; x++ {
-			//color := src.At(x, y)
-			//r, g, b, _ := color.RGBA()
+	screen.rgb = make([][]color.Color, screen.h)
+	for y := 0; y < screen.h; y++ {
+		row := make([]color.Color, screen.w)
+		for x := 0; x < screen.w; x++ {
 			row[x] = src.At(x, y)
 		}
-		rgb[y] = row
+		screen.rgb[y] = row
 	}
-	return w, h, rgb
+	return screen
 }
 func findImage(path string) [2]int {
-	wSmall, hSmall, small := loadImg(path)
-	wBig, hBig, big := getScreenshot()
+	img := loadImg(path)
+	screen := getScreenshot()
 	var res [2]int
-	for bigRow := 0; bigRow < hBig-hSmall; bigRow++ {
+	for bigRow := 0; bigRow < screen.h-img.h; bigRow++ {
 		//fmt.Println(bigRow)
-		for bigCol := 0; bigCol < wBig-wSmall; bigCol++ {
+		for bigCol := 0; bigCol < screen.w-img.w; bigCol++ {
 			// calc
 			err := false
-			for y := 0; !err && y < hSmall; y++ {
-				for x := 0; !err && x < wSmall; x++ {
-					if small[y][x] != big[bigRow+y][bigCol+x] {
+			for y := 0; !err && y < img.h; y++ {
+				for x := 0; !err && x < img.w; x++ {
+					iR, iG, iB, _ := img.rgb[y][x].RGBA()
+					sR, sG, sB, _ := screen.rgb[bigRow+y][bigCol+x].RGBA()
+					if iR != sR || iG != sG || iB != sB {
 						err = true
-					} else {
-						fmt.Println("x:", x, "\ty:", y, "\tsmall:", small[y][x], "\tbig:", big[bigRow+y][bigCol+x])
 					}
 				}
 			}
@@ -119,9 +121,9 @@ func main() {
 	//wWind = wWindow+33
 	//hWind = hWindow+33
 	xCord = 0
-	yCord = 500
-	wWind = 100
-	hWind = 300
+	yCord = 0
+	wWind = 700
+	hWind = 1080
 
 	//fpid, _ := robotgo.FindIds("HD-Player.exe")
 	//Показ границ окна

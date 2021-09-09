@@ -5,6 +5,7 @@ import (
 	"github.com/go-vgo/robotgo"
 	"github.com/kbinani/screenshot"
 	"image"
+	"image/color"
 	"image/png"
 	"os"
 	"time"
@@ -19,7 +20,7 @@ var (
 
 //fmt.Println(xWindow, yWindow, wWindow, hWindow)
 
-func loadImg(path string) (w int, h int, rgb [][][]uint8) {
+func loadImg(path string) (w int, h int, rgb [][]color.Color) {
 	infile, err := os.Open(path)
 	if err != nil {
 		panic("can't open " + path)
@@ -34,13 +35,13 @@ func loadImg(path string) (w int, h int, rgb [][][]uint8) {
 	bounds := src.Bounds()
 	w, h = bounds.Max.X, bounds.Max.Y
 
-	rgb = make([][][]uint8, h)
+	rgb = make([][]color.Color, h)
 	for y := 0; y < h; y++ {
-		row := make([][]uint8, w)
+		row := make([]color.Color, w)
 		for x := 0; x < w; x++ {
-			color := src.At(x, y)
-			r, g, b, _ := color.RGBA()
-			row[x] = []uint8{uint8(r), uint8(g), uint8(b)}
+			//color := src.At(x, y)
+			//r, g, b, _ := color.RGBA()
+			row[x] = src.At(x, y)
 		}
 		rgb[y] = row
 	}
@@ -55,7 +56,7 @@ func saveImg(img *image.RGBA, filePath string) {
 	defer file.Close()
 	png.Encode(file, img)
 }
-func getScreenshot() (int, int, [][][]uint8) {
+func getScreenshot() (int, int, [][]color.Color) {
 	start := time.Now()
 
 	src, _ := screenshot.Capture(xCord, yCord, wWind, hWind)
@@ -65,14 +66,14 @@ func getScreenshot() (int, int, [][][]uint8) {
 	//save(src, "all.png")
 	bounds := src.Bounds()
 	w, h := bounds.Max.X, bounds.Max.Y
-	fmt.Println(w, h)
-	rgb := make([][][]uint8, h)
+	//fmt.Println(w, h)
+	rgb := make([][]color.Color, h)
 	for y := 0; y < h; y++ {
-		row := make([][]uint8, w)
+		row := make([]color.Color, w)
 		for x := 0; x < w; x++ {
-			color := src.At(x, y)
-			r, g, b, _ := color.RGBA()
-			row[x] = []uint8{uint8(r), uint8(g), uint8(b)}
+			//color := src.At(x, y)
+			//r, g, b, _ := color.RGBA()
+			row[x] = src.At(x, y)
 		}
 		rgb[y] = row
 	}
@@ -89,10 +90,10 @@ func findImage(path string) [2]int {
 			err := false
 			for y := 0; !err && y < hSmall; y++ {
 				for x := 0; !err && x < wSmall; x++ {
-					if small[y][x][0] != big[bigRow+y][bigCol+x][0] ||
-						small[y][x][1] != big[bigRow+y][bigCol+x][1] ||
-						small[y][x][2] != big[bigRow+y][bigCol+x][2] {
+					if small[y][x] != big[bigRow+y][bigCol+x] {
 						err = true
+					} else {
+						fmt.Println("x:", x, "\ty:", y, "\tsmall:", small[y][x], "\tbig:", big[bigRow+y][bigCol+x])
 					}
 				}
 			}
@@ -118,9 +119,9 @@ func main() {
 	//wWind = wWindow+33
 	//hWind = hWindow+33
 	xCord = 0
-	yCord = 0
-	wWind = 750
-	hWind = 1070
+	yCord = 500
+	wWind = 100
+	hWind = 300
 
 	//fpid, _ := robotgo.FindIds("HD-Player.exe")
 	//Показ границ окна

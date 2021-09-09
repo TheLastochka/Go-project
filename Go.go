@@ -21,10 +21,8 @@ var (
 type Img struct {
 	w   int
 	h   int
-	rgb [][]color.Color
+	rgb [][]color.Color // x,y
 }
-
-//fmt.Println(xWindow, yWindow, wWindow, hWindow)
 
 func loadImg(path string) (img Img) {
 	infile, err := os.Open(path)
@@ -41,17 +39,16 @@ func loadImg(path string) (img Img) {
 	bounds := src.Bounds()
 	img.w, img.h = bounds.Max.X, bounds.Max.Y
 
-	img.rgb = make([][]color.Color, img.h)
-	for y := 0; y < img.h; y++ {
-		row := make([]color.Color, img.w)
-		for x := 0; x < img.w; x++ {
-			row[x] = src.At(x, y)
+	img.rgb = make([][]color.Color, img.w)
+	for x := 0; x < img.w; x++ {
+		col := make([]color.Color, img.h)
+		for y := 0; y < img.h; y++ {
+			col[y] = src.At(x, y)
 		}
-		img.rgb[y] = row
+		img.rgb[x] = col
 	}
 	return img
 }
-
 func saveImg(img *image.RGBA, filePath string) {
 	file, err := os.Create(filePath)
 	if err != nil {
@@ -61,23 +58,17 @@ func saveImg(img *image.RGBA, filePath string) {
 	png.Encode(file, img)
 }
 func getScreenshot() (screen Img) {
-	start := time.Now()
-
 	src, _ := screenshot.Capture(xCord, yCord, wWind, hWind)
-	end := time.Now()
-
-	fmt.Println("time:", end.Sub(start))
 	//save(src, "all.png")
 	bounds := src.Bounds()
 	screen.w, screen.h = bounds.Max.X, bounds.Max.Y
-	//fmt.Println(w, h)
-	screen.rgb = make([][]color.Color, screen.h)
-	for y := 0; y < screen.h; y++ {
-		row := make([]color.Color, screen.w)
-		for x := 0; x < screen.w; x++ {
-			row[x] = src.At(x, y)
+	screen.rgb = make([][]color.Color, screen.w)
+	for x := 0; x < screen.w; x++ {
+		col := make([]color.Color, screen.h)
+		for y := 0; y < screen.h; y++ {
+			col[y] = src.At(x, y)
 		}
-		screen.rgb[y] = row
+		screen.rgb[x] = col
 	}
 	return screen
 }
@@ -85,15 +76,15 @@ func findImage(path string) [2]int {
 	img := loadImg(path)
 	screen := getScreenshot()
 	var res [2]int
-	for bigRow := 0; bigRow < screen.h-img.h; bigRow++ {
+	for bigCol := 0; bigCol < screen.w-img.w; bigCol++ {
 		//fmt.Println(bigRow)
-		for bigCol := 0; bigCol < screen.w-img.w; bigCol++ {
+		for bigRow := 0; bigRow < screen.h-img.h; bigRow++ {
 			// calc
 			err := false
-			for y := 0; !err && y < img.h; y++ {
-				for x := 0; !err && x < img.w; x++ {
-					iR, iG, iB, _ := img.rgb[y][x].RGBA()
-					sR, sG, sB, _ := screen.rgb[bigRow+y][bigCol+x].RGBA()
+			for x := 0; !err && x < img.w; x++ {
+				for y := 0; !err && y < img.h; y++ {
+					iR, iG, iB, _ := img.rgb[x][y].RGBA()
+					sR, sG, sB, _ := screen.rgb[bigCol+x][bigRow+y].RGBA()
 					if iR != sR || iG != sG || iB != sB {
 						err = true
 					}
@@ -101,8 +92,8 @@ func findImage(path string) [2]int {
 			}
 			if !err {
 				//fmt.Println("found!", bigRow, bigCol)
-				res[1] = bigRow + yCord
-				res[0] = bigCol + xCord
+				res[0] = xCord + bigCol
+				res[1] = yCord + bigRow
 				return res
 			}
 		}
@@ -111,8 +102,22 @@ func findImage(path string) [2]int {
 	res[1] = -1
 	return res
 }
+func findPixel(r uint8, g uint8, b uint8) [2]int {
+	screen := getScreenshot()
+	clr := color.RGBA{R: r, G: g, B: b, A: 255}
+	for x := 0; x < screen.w; x++ {
+		for y := 0; y < screen.h; y++ {
+			if screen.rgb[x][y] == clr {
+				return [2]int{x, y}
+			}
+		}
+	}
+	return [2]int{-1, -1}
+}
+
 func main() {
-	time.Sleep(2 * time.Second)
+	start := time.Now()
+	//time.Sleep(2 * time.Second)
 	//fpid, _ := robotgo.FindIds("HD-Player.exe")
 	//
 	//xWindow, yWindow, wWindow, hWindow := robotgo.GetBounds(fpid[0])
@@ -139,11 +144,14 @@ func main() {
 	//time.Sleep(1* time.Second)
 	//fmt.Println(fpid)
 
-	start := time.Now()
-	mas := findImage("./vkIcon.png")
-	fmt.Println(mas)
-	robotgo.Move(mas[0], mas[1])
-	end := time.Now()
+	if false {
+		mas := findImage("./vkIcon.png")
+		fmt.Println(mas)
+		robotgo.Move(mas[0], mas[1])
+	}
 
+	fmt.Println(findPixel(243, 12, 67))
+
+	end := time.Now()
 	fmt.Println("time:", end.Sub(start))
 }

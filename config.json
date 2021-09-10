@@ -1,0 +1,38 @@
+{
+  "sleep_after": {
+    "restart":     60,
+    "vkIcon":      12,
+    "services":    14,
+    "appIcon":     8,
+    "watchBtn":    7,
+    "siteOpenBtn": 7,
+    "backArrow":   3,
+    "closeAd":     1,
+    "history":     2
+  },
+
+  "icons": {
+    "vkIcon":    "./vkIcon.png",
+    "services":  "./services.png",
+    "appIcon":   "./appIcon.png",
+    "backArrow": "./backArrow.png",
+    "closeAd":   "./closeAd.png",
+    "closeAll":  "./closeAll.png",
+    "history":   "./history.png"
+  },
+
+  "colors": {
+    "watchBtn": {
+      "R": 1,
+      "G": 2,
+      "B": 3,
+      "A": 255
+    },
+    "siteOpenBtn": {
+      "R": 1,
+      "G": 2,
+      "B": 3,
+      "A": 255
+    }
+  }
+}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/go-vgo/robotgo"
 	"github.com/kbinani/screenshot"
@@ -29,6 +30,11 @@ type Region struct {
 	y0 int
 	w  int
 	h  int
+}
+type Config struct {
+	SleepAfter map[string]time.Duration `json:"sleep_after"`
+	Icons      map[string]string        `json:"icons"`
+	Colors     map[string]color.RGBA    `json:"colors"`
 }
 
 func loadImg(path string) (img Img) {
@@ -117,13 +123,12 @@ func findImage(path string, region ...Region) [2]int {
 	res[1] = -1
 	return res
 }
-func findPixel(r uint8, g uint8, b uint8, region ...Region) [2]int {
+func findPixel(clr color.RGBA, region ...Region) [2]int {
 	reg := Region{xCord, yCord, wWind, hWind}
 	if len(region) != 0 {
 		reg = region[0]
 	}
 	screen := getScreenshot(reg)
-	clr := color.RGBA{R: r, G: g, B: b, A: 255}
 	for x := 0; x < screen.w; x++ {
 		for y := 0; y < screen.h; y++ {
 			if screen.rgb[x][y] == clr {
@@ -133,39 +138,38 @@ func findPixel(r uint8, g uint8, b uint8, region ...Region) [2]int {
 	}
 	return [2]int{-1, -1}
 }
+func openConfig(path string) (Config, error) {
+	file, _ := os.Open(path)
+	defer file.Close()
+	decoder := json.NewDecoder(file)
+	conf := Config{}
+	err := decoder.Decode(&conf)
+	return conf, err
+}
+
+//func get
 
 func main() {
-	sleepAfter := map[string]time.Duration{
-		"restart":     60,
-		"vkIcon":      12,
-		"services":    14,
-		"appIcon":     8,
-		"watchBTN":    7,
-		"siteOpenBtn": 7,
-		"backArrow":   3,
-		"closeAd":     1,
-	}
 	start := time.Now()
-	//time.Sleep(2 * time.Second)
-	//fpid, _ := robotgo.FindIds("HD-Player.exe")
-	//
-	//xWindow, yWindow, wWindow, hWindow := robotgo.GetBounds(fpid[0])
-	//xCord = xWindow
-	//yCord = yWindow-33
-	//wWind = wWindow+33
-	//hWind = hWindow+33
+	conf, err := openConfig("./config.json")
+	if err != nil {
+		panic("can't open config")
+	}
+
+	exec.Command("correct_wind.bat").Run()
+	fpid, _ := robotgo.FindIds("HD-Player.exe")
+
+	xWindow, yWindow, wWindow, hWindow := robotgo.GetBounds(fpid[0])
+	xCord = xWindow
+	yCord = yWindow - 33
+	wWind = wWindow + 33
+	hWind = hWindow + 33
 	xCord = 0
 	yCord = 0
 	wWind = 700
 	hWind = 1080
 
-	//cmd := exec.Command("calc")
-	//cmd.Run()
 	time.Sleep(2 * time.Second)
-	com := "nircmd exec show \"calc\""
-	fmt.Println(com)
-	cmd := exec.Command(com)
-	cmd.Run()
 
 	//fpid, _ := robotgo.FindIds("HD-Player.exe")
 	//Показ границ окна
@@ -187,23 +191,21 @@ func main() {
 		robotgo.Move(mas[0], mas[1])
 	}
 
-	fmt.Println(findPixel(243, 12, 67))
-
 	end := time.Now()
 	fmt.Println("time:", end.Sub(start))
 
 	if false {
-		cords := findImage("./vkIcon.png")
+		cords := findImage(conf.Icons["vkIcon"])
 		robotgo.MoveClick(cords[0], cords[1])
-		time.Sleep(sleepAfter["vkIcon"] * time.Second)
+		time.Sleep(conf.SleepAfter["vkIcon"] * time.Second)
 
-		cords = findImage("./services.png")
+		cords = findImage(conf.Icons["services"])
 		robotgo.MoveClick(cords[0], cords[1])
-		time.Sleep(sleepAfter["services"] * time.Second)
+		time.Sleep(conf.SleepAfter["services"] * time.Second)
 
-		cords = findImage("./appIcon.png")
+		cords = findImage(conf.Icons["appIcon"])
 		robotgo.MoveClick(cords[0], cords[1])
-		time.Sleep(sleepAfter["appIcon"] * time.Second)
+		time.Sleep(conf.SleepAfter["appIcon"] * time.Second)
 
 		//cords = findPixel(75, 179, 75)
 		//robotgo.MoveClick(cords[0], cords[1])
@@ -213,12 +215,12 @@ func main() {
 		//robotgo.MoveClick(cords[0], cords[1])
 		//time.Sleep(sleepAfter["siteOpenBtn"] * time.Second)
 
-		cords = findImage("./backArrow.png", Region{xCord, yCord + hWind/2, wWind, hWind / 2})
+		cords = findImage(conf.Icons["backArrow"], Region{xCord, yCord + hWind/2, wWind, hWind / 2})
 		robotgo.MoveClick(cords[0], cords[1])
-		time.Sleep(sleepAfter["backArrow"] * time.Second)
+		time.Sleep(conf.SleepAfter["backArrow"] * time.Second)
 
-		cords = findImage("./closeAd.png", Region{xCord, yCord, wWind, hWind / 2})
+		cords = findImage(conf.Icons["closeAd"], Region{xCord, yCord, wWind, hWind / 2})
 		robotgo.MoveClick(cords[0], cords[1])
-		time.Sleep(sleepAfter["closeAd"] * time.Second)
+		time.Sleep(conf.SleepAfter["closeAd"] * time.Second)
 	}
 }

@@ -24,6 +24,12 @@ type Img struct {
 	h   int
 	rgb [][]color.Color // x,y
 }
+type Region struct {
+	x0 int
+	y0 int
+	w  int
+	h  int
+}
 
 func loadImg(path string) (img Img) {
 	infile, err := os.Open(path)
@@ -58,11 +64,12 @@ func saveImg(img *image.RGBA, filePath string) {
 	defer file.Close()
 	png.Encode(file, img)
 }
-func getScreenshot() (screen Img) {
-	return getRegionShot(xCord, yCord, wWind, hWind)
-}
-func getRegionShot(x0 int, y0 int, w int, h int) (screen Img) {
-	src, _ := screenshot.Capture(x0, y0, w, h)
+func getScreenshot(region ...Region) (screen Img) {
+	reg := Region{xCord, yCord, wWind, hWind}
+	if len(region) != 0 {
+		reg = region[0]
+	}
+	src, _ := screenshot.Capture(reg.x0, reg.y0, reg.w, reg.h)
 	//save(src, "all.png")
 	bounds := src.Bounds()
 	screen.w, screen.h = bounds.Max.X, bounds.Max.Y
@@ -76,12 +83,13 @@ func getRegionShot(x0 int, y0 int, w int, h int) (screen Img) {
 	}
 	return screen
 }
-func findImage(path string) [2]int {
-	return findImageInRegion(path, xCord, yCord, wWind, hWind)
-}
-func findImageInRegion(path string, x0 int, y0 int, w int, h int) [2]int {
+func findImage(path string, region ...Region) [2]int {
+	reg := Region{xCord, yCord, wWind, hWind}
+	if len(region) != 0 {
+		reg = region[0]
+	}
 	img := loadImg(path)
-	screen := getRegionShot(x0, y0, w, h)
+	screen := getScreenshot(reg)
 	var res [2]int
 	for bigCol := 0; bigCol < screen.w-img.w; bigCol++ {
 		//fmt.Println(bigRow)
@@ -109,11 +117,12 @@ func findImageInRegion(path string, x0 int, y0 int, w int, h int) [2]int {
 	res[1] = -1
 	return res
 }
-func findPixel(r uint8, g uint8, b uint8) [2]int {
-	return findPixelInRegion(r, g, b, xCord, yCord, wWind, hWind)
-}
-func findPixelInRegion(r uint8, g uint8, b uint8, x0 int, y0 int, w int, h int) [2]int {
-	screen := getRegionShot(x0, y0, w, h)
+func findPixel(r uint8, g uint8, b uint8, region ...Region) [2]int {
+	reg := Region{xCord, yCord, wWind, hWind}
+	if len(region) != 0 {
+		reg = region[0]
+	}
+	screen := getScreenshot(reg)
 	clr := color.RGBA{R: r, G: g, B: b, A: 255}
 	for x := 0; x < screen.w; x++ {
 		for y := 0; y < screen.h; y++ {
@@ -183,32 +192,33 @@ func main() {
 	end := time.Now()
 	fmt.Println("time:", end.Sub(start))
 
-	cords := findImage("./vkIcon.png")
-	robotgo.MoveClick(cords[0], cords[1])
-	time.Sleep(sleepAfter["vkIcon"] * time.Second)
+	if false {
+		cords := findImage("./vkIcon.png")
+		robotgo.MoveClick(cords[0], cords[1])
+		time.Sleep(sleepAfter["vkIcon"] * time.Second)
 
-	cords = findImage("./services.png")
-	robotgo.MoveClick(cords[0], cords[1])
-	time.Sleep(sleepAfter["services"] * time.Second)
+		cords = findImage("./services.png")
+		robotgo.MoveClick(cords[0], cords[1])
+		time.Sleep(sleepAfter["services"] * time.Second)
 
-	cords = findImage("./appIcon.png")
-	robotgo.MoveClick(cords[0], cords[1])
-	time.Sleep(sleepAfter["appIcon"] * time.Second)
+		cords = findImage("./appIcon.png")
+		robotgo.MoveClick(cords[0], cords[1])
+		time.Sleep(sleepAfter["appIcon"] * time.Second)
 
-	cords = findPixel(75, 179, 75)
-	robotgo.MoveClick(cords[0], cords[1])
-	time.Sleep(sleepAfter["watchBTN"] * time.Second)
+		//cords = findPixel(75, 179, 75)
+		//robotgo.MoveClick(cords[0], cords[1])
+		//time.Sleep(sleepAfter["watchBTN"] * time.Second)
+		//
+		//cords = findPixelInRegion(75, 179, 75, xCord, yCord+hWind/2, wWind, hWind/2)
+		//robotgo.MoveClick(cords[0], cords[1])
+		//time.Sleep(sleepAfter["siteOpenBtn"] * time.Second)
 
-	cords = findPixelInRegion(75, 179, 75, xCord, yCord+hWind/2, wWind, hWind/2)
-	robotgo.MoveClick(cords[0], cords[1])
-	time.Sleep(sleepAfter["siteOpenBtn"] * time.Second)
+		cords = findImage("./backArrow.png", Region{xCord, yCord + hWind/2, wWind, hWind / 2})
+		robotgo.MoveClick(cords[0], cords[1])
+		time.Sleep(sleepAfter["backArrow"] * time.Second)
 
-	cords = findImageInRegion("./backArrow.png", xCord, yCord+hWind/2, wWind, hWind/2)
-	robotgo.MoveClick(cords[0], cords[1])
-	time.Sleep(sleepAfter["backArrow"] * time.Second)
-
-	cords = findImageInRegion("./closeAd.png", xCord, yCord, wWind, hWind/2)
-	robotgo.MoveClick(cords[0], cords[1])
-	time.Sleep(sleepAfter["closeAd"] * time.Second)
-
+		cords = findImage("./closeAd.png", Region{xCord, yCord, wWind, hWind / 2})
+		robotgo.MoveClick(cords[0], cords[1])
+		time.Sleep(sleepAfter["closeAd"] * time.Second)
+	}
 }

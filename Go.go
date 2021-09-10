@@ -1,23 +1,30 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/go-vgo/robotgo"
 	"github.com/kbinani/screenshot"
 	"image"
 	"image/color"
+	"image/jpeg"
 	"image/png"
 	"os"
 	"os/exec"
 	"time"
+	"unsafe"
 )
 
 var (
-	xCord int
-	yCord int
-	wWind int
-	hWind int
+	xCord        int
+	yCord        int
+	wWind        int
+	hWind        int
+	sitesWatched int
+	errorsCount  int
+	lastAd       time.Time
 )
 
 type Img struct {
@@ -146,30 +153,56 @@ func openConfig(path string) (Config, error) {
 	err := decoder.Decode(&conf)
 	return conf, err
 }
-
-//func get
+func getBase64Shot() string {
+	src, _ := screenshot.Capture(0, 0, 1920, 1080)
+	emptyBuff := bytes.NewBuffer(nil)                         //Open up a new empty buff
+	jpeg.Encode(emptyBuff, src, nil)                          //img is written to buff
+	dist := make([]byte, int32(float32(emptyBuff.Len())*1.4)) //Open up storage space
+	base64.StdEncoding.Encode(dist, emptyBuff.Bytes())        //buff is converted to base64
+	index := bytes.IndexByte(dist, 0)                         //Note here that because of the fixed-length array applied, the part that has not been filled needs to be removed, and the output may be wrong.
+	baseImage := dist[0:index]
+	return *(*string)(unsafe.Pointer(&baseImage))
+}
+func addSiteView() {
+	sitesWatched++
+}
+func addError() {
+	errorsCount++
+}
+func log(s string, m string) {
+	/* кажется не оч, что будет постоянно открываться файл лога
+	и писаться в него каждая строка отдельно
+	 может сделать какой-то поток вывода
+	 чтобы реже открывать файл лога
+	 может через какой-то функционал golang это сделать
+	 трубы там какие-то были или рутины*/
+}
 
 func main() {
+	var cords [2]int
 	start := time.Now()
+	lastAd = time.Now()
 	conf, err := openConfig("./config.json")
 	if err != nil {
 		panic("can't open config")
 	}
 
-	exec.Command("correct_wind.bat").Run()
-	fpid, _ := robotgo.FindIds("HD-Player.exe")
+	if false {
+		// добавить hd-player в path надо для батника
+		exec.Command("correct_wind.bat").Run()
+		fpid, _ := robotgo.FindIds("HD-Player.exe")
+		time.Sleep(2 * time.Second)
+		xWindow, yWindow, wWindow, hWindow := robotgo.GetBounds(fpid[0])
+		xCord = xWindow
+		yCord = yWindow - 33
+		wWind = wWindow + 33
+		hWind = hWindow + 33
+	}
 
-	xWindow, yWindow, wWindow, hWindow := robotgo.GetBounds(fpid[0])
-	xCord = xWindow
-	yCord = yWindow - 33
-	wWind = wWindow + 33
-	hWind = hWindow + 33
 	xCord = 0
 	yCord = 0
 	wWind = 700
 	hWind = 1080
-
-	time.Sleep(2 * time.Second)
 
 	//fpid, _ := robotgo.FindIds("HD-Player.exe")
 	//Показ границ окна
@@ -184,28 +217,43 @@ func main() {
 	//robotgo.Move(xCord,yCord+hWind)
 	//time.Sleep(1* time.Second)
 	//fmt.Println(fpid)
-
-	if false {
-		mas := findImage("./vkIcon.png")
-		fmt.Println(mas)
-		robotgo.Move(mas[0], mas[1])
-	}
-
 	end := time.Now()
 	fmt.Println("time:", end.Sub(start))
 
-	if false {
-		cords := findImage(conf.Icons["vkIcon"])
+	//TODO: stats.json запись и чтение sitesC и errorsC
+	sitesWatched = 0
+	errorsCount = 0
+
+	cords = findImage(conf.Icons["vkIcon"])
+	if cords[0] != -1 {
 		robotgo.MoveClick(cords[0], cords[1])
+		log("info", "Открытие вк")
 		time.Sleep(conf.SleepAfter["vkIcon"] * time.Second)
 
 		cords = findImage(conf.Icons["services"])
-		robotgo.MoveClick(cords[0], cords[1])
-		time.Sleep(conf.SleepAfter["services"] * time.Second)
+		if cords[0] != -1 {
+			robotgo.MoveClick(cords[0], cords[1])
+			log("info", "Открытие сервисов")
+			time.Sleep(conf.SleepAfter["services"] * time.Second)
 
-		cords = findImage(conf.Icons["appIcon"])
-		robotgo.MoveClick(cords[0], cords[1])
-		time.Sleep(conf.SleepAfter["appIcon"] * time.Second)
+			cords = findImage(conf.Icons["appIcon"])
+			if cords[0] != -1 {
+				robotgo.MoveClick(cords[0], cords[1])
+				time.Sleep(conf.SleepAfter["appIcon"] * time.Second)
+			} else {
+				log("error", "приложение не найдено")
+			}
+		} else {
+			log("error", "сервисы не найдены")
+		}
+
+	} else {
+		log("error", "вк не найден")
+	}
+
+	//TODO: ну здесь цикл этот, а может что получше
+
+	if false {
 
 		//cords = findPixel(75, 179, 75)
 		//robotgo.MoveClick(cords[0], cords[1])

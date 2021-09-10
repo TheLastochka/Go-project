@@ -8,6 +8,7 @@ import (
 	"image/color"
 	"image/png"
 	"os"
+	"os/exec"
 	"time"
 )
 
@@ -58,7 +59,10 @@ func saveImg(img *image.RGBA, filePath string) {
 	png.Encode(file, img)
 }
 func getScreenshot() (screen Img) {
-	src, _ := screenshot.Capture(xCord, yCord, wWind, hWind)
+	return getRegionShot(xCord, yCord, wWind, hWind)
+}
+func getRegionShot(x0 int, y0 int, w int, h int) (screen Img) {
+	src, _ := screenshot.Capture(x0, y0, w, h)
 	//save(src, "all.png")
 	bounds := src.Bounds()
 	screen.w, screen.h = bounds.Max.X, bounds.Max.Y
@@ -73,8 +77,11 @@ func getScreenshot() (screen Img) {
 	return screen
 }
 func findImage(path string) [2]int {
+	return findImageInRegion(path, xCord, yCord, wWind, hWind)
+}
+func findImageInRegion(path string, x0 int, y0 int, w int, h int) [2]int {
 	img := loadImg(path)
-	screen := getScreenshot()
+	screen := getRegionShot(x0, y0, w, h)
 	var res [2]int
 	for bigCol := 0; bigCol < screen.w-img.w; bigCol++ {
 		//fmt.Println(bigRow)
@@ -103,7 +110,10 @@ func findImage(path string) [2]int {
 	return res
 }
 func findPixel(r uint8, g uint8, b uint8) [2]int {
-	screen := getScreenshot()
+	return findPixelInRegion(r, g, b, xCord, yCord, wWind, hWind)
+}
+func findPixelInRegion(r uint8, g uint8, b uint8, x0 int, y0 int, w int, h int) [2]int {
+	screen := getRegionShot(x0, y0, w, h)
 	clr := color.RGBA{R: r, G: g, B: b, A: 255}
 	for x := 0; x < screen.w; x++ {
 		for y := 0; y < screen.h; y++ {
@@ -116,6 +126,16 @@ func findPixel(r uint8, g uint8, b uint8) [2]int {
 }
 
 func main() {
+	sleepAfter := map[string]time.Duration{
+		"restart":     60,
+		"vkIcon":      12,
+		"services":    14,
+		"appIcon":     8,
+		"watchBTN":    7,
+		"siteOpenBtn": 7,
+		"backArrow":   3,
+		"closeAd":     1,
+	}
 	start := time.Now()
 	//time.Sleep(2 * time.Second)
 	//fpid, _ := robotgo.FindIds("HD-Player.exe")
@@ -129,6 +149,14 @@ func main() {
 	yCord = 0
 	wWind = 700
 	hWind = 1080
+
+	//cmd := exec.Command("calc")
+	//cmd.Run()
+	time.Sleep(2 * time.Second)
+	com := "nircmd exec show \"calc\""
+	fmt.Println(com)
+	cmd := exec.Command(com)
+	cmd.Run()
 
 	//fpid, _ := robotgo.FindIds("HD-Player.exe")
 	//Показ границ окна
@@ -154,4 +182,33 @@ func main() {
 
 	end := time.Now()
 	fmt.Println("time:", end.Sub(start))
+
+	cords := findImage("./vkIcon.png")
+	robotgo.MoveClick(cords[0], cords[1])
+	time.Sleep(sleepAfter["vkIcon"] * time.Second)
+
+	cords = findImage("./services.png")
+	robotgo.MoveClick(cords[0], cords[1])
+	time.Sleep(sleepAfter["services"] * time.Second)
+
+	cords = findImage("./appIcon.png")
+	robotgo.MoveClick(cords[0], cords[1])
+	time.Sleep(sleepAfter["appIcon"] * time.Second)
+
+	cords = findPixel(75, 179, 75)
+	robotgo.MoveClick(cords[0], cords[1])
+	time.Sleep(sleepAfter["watchBTN"] * time.Second)
+
+	cords = findPixelInRegion(75, 179, 75, xCord, yCord+hWind/2, wWind, hWind/2)
+	robotgo.MoveClick(cords[0], cords[1])
+	time.Sleep(sleepAfter["siteOpenBtn"] * time.Second)
+
+	cords = findImageInRegion("./backArrow.png", xCord, yCord+hWind/2, wWind, hWind/2)
+	robotgo.MoveClick(cords[0], cords[1])
+	time.Sleep(sleepAfter["backArrow"] * time.Second)
+
+	cords = findImageInRegion("./closeAd.png", xCord, yCord, wWind, hWind/2)
+	robotgo.MoveClick(cords[0], cords[1])
+	time.Sleep(sleepAfter["closeAd"] * time.Second)
+
 }

@@ -1,2 +1,2 @@
 # Go-project
-images handle (unfinished)
+image handler (unfinished)
